@@ -19,12 +19,13 @@ Double-click `pip_blocker.ahk`. A tray icon will appear in the system tray.
 ## Usage
 
 1. Open a PiP window in Chrome (click the media icon in the toolbar → *Picture in Picture*)
-2. Press **Ctrl+Shift+P**
+2. Press **Ctrl+Shift+P** (auto-detect)
+   - *Note: If auto-detect fails on custom websites, click the PiP window to make it active and press **Ctrl+Shift+L** to force-lock it.*
 3. The PiP window is now fully locked:
    - All mouse clicks pass through it to whatever is underneath
    - The window cannot be moved or resized
    - The video continues playing normally
-4. Press **Ctrl+Shift+P** again to restore normal behavior
+4. Press **Ctrl+Shift+P** (or **Ctrl+Shift+L**) again to restore normal behavior
 
 ---
 
@@ -32,7 +33,8 @@ Double-click `pip_blocker.ahk`. A tray icon will appear in the system tray.
 
 | Hotkey | Action |
 |---|---|
-| `Ctrl` + `Shift` + `P` | Toggle lock / unlock |
+| `Ctrl` + `Shift` + `P` | Toggle lock / unlock (Auto-detect PiP) |
+| `Ctrl` + `Shift` + `L` | Toggle lock / unlock on the CURRENTLY ACTIVE window (Force) |
 | `Ctrl` + `Shift` + `F` | Debug — show info about the detected PiP window |
 
 ---

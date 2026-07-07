@@ -3,13 +3,14 @@
 ; ║                                                              ║
 ; ║  Hotkeys:                                                    ║
 ; ║    Ctrl+Shift+P  →  Toggle block on the PiP window          ║
+; ║    Ctrl+Shift+L  →  Toggle block on ACTIVE window (Force)  ║
 ; ║    Ctrl+Shift+F  →  Find & highlight PiP window (debug)     ║
 ; ║                                                              ║
 ; ║  How to use:                                                 ║
 ; ║    1. Open a Chrome PiP window (music icon → PiP)           ║
 ; ║    2. Press Ctrl+Shift+P                                     ║
 ; ║    3. The window becomes click-through and position-locked   ║
-; ║    4. Press Ctrl+Shift+P again to unlock                     ║
+; ║    4. Press Ctrl+Shift+P (or L) again to unlock              ║
 ; ╚══════════════════════════════════════════════════════════════╝
 
 #Requires AutoHotkey v2.0
@@ -49,8 +50,11 @@ A_IconTip := "PiP Blocker — inactive"
 ;  HOTKEYS
 ; ════════════════════════════════════════════════════════════════
 
-; Main toggle
+; Main toggle (auto-detect PiP)
 ^+p:: ToggleBlock()
+
+; Force toggle on the currently active window
+^+l:: ToggleBlockActive()
 
 ; Debug: show info about detected PiP window
 ^+f:: {
@@ -114,6 +118,40 @@ ToggleBlock(*) {
     isBlocked := true
     A_IconTip := "PiP Blocker — ACTIVE"
     TrayTip("PiP locked!  Ctrl+Shift+P to unlock", "PiP Blocker")
+}
+
+ToggleBlockActive(*) {
+    global isBlocked, targetHwnd, lockedX, lockedY, lockedW, lockedH
+
+    if isBlocked {
+        ; UNLOCK
+        ToggleBlock()
+        return
+    }
+
+    hwnd := WinGetID("A")
+    if !hwnd {
+        MsgBox "No active window found!", "PiP Blocker", 48
+        return
+    }
+
+    targetHwnd := hwnd
+
+    ; Snapshot current position & size to lock it
+    WinGetPos(&lockedX, &lockedY, &lockedW, &lockedH, "ahk_id " hwnd)
+
+    ; Apply click-through
+    ApplyClickThrough(hwnd)
+
+    ; Remove resizable border
+    RemoveResizable(hwnd)
+
+    ; Start position guard
+    SetTimer LockPosition, 150
+
+    isBlocked := true
+    A_IconTip := "PiP Blocker — ACTIVE (Forced)"
+    TrayTip("Active window locked!  Ctrl+Shift+P/L to unlock", "PiP Blocker")
 }
 
 ; ════════════════════════════════════════════════════════════════
@@ -199,30 +237,32 @@ FindPipWindow() {
         title := WinGetTitle("ahk_id " hwnd)
         WinGetPos(&x, &y, &w, &h, "ahk_id " hwnd)
 
-        if !WinExist("ahk_id " hwnd) || w <= 0 || h <= 0
+        if !WinExist("ahk_id " hwnd) || w <= 150 || h <= 100
             continue
         if !DllCall("IsWindowVisible", "Ptr", hwnd)
             continue
 
         score := 0
 
-        ; Explicit title match
-        if InStr(title, "Picture in Picture", false)
+        ; Explicit title match (English & Turkish)
+        if InStr(title, "Picture in Picture", false) || InStr(title, "Resim içinde Resim", false)
             score += 100
 
-        ; Small window
+        ; Document PiP can be larger. Give points for being reasonably sized.
         if (w < 600 && h < 450)
             score += 50
+        else if (w < 1200 && h < 800)
+            score += 20
 
-        ; Always-on-top (WS_EX_TOPMOST = 0x8)
+        ; Always-on-top (WS_EX_TOPMOST = 0x8) is a very strong indicator for PiP
         exStyle := DllCall("GetWindowLong", "Ptr", hwnd, "Int", GWL_EXSTYLE, "Int")
         if (exStyle & 0x8)
-            score += 30
+            score += 60
 
         ; Reasonable video aspect ratio
         if (w > 0 && h > 0) {
             ratio := w / h
-            if (ratio > 1.2 && ratio < 2.5)
+            if (ratio > 1.0 && ratio < 3.0)
                 score += 20
         }
 
@@ -232,7 +272,7 @@ FindPipWindow() {
         }
     }
 
-    return (bestScore >= 50) ? bestHwnd : 0
+    return (bestScore >= 70) ? bestHwnd : 0
 }
 
 ; ════════════════════════════════════════════════════════════════
